@@ -1,19 +1,19 @@
 #Loading Libraries ----
 #General functions such as reading tables and tidy data
-library(tidyverse)
-library(readxl)
-library(openxlsx)
-library(RColorBrewer)
+if (!require('tidyverse2')) install.packages('tidyverse'); library('tidyverse')
+if (!require('readxl')) install.packages('readxl'); library('readxl')
+if (!require('openxlsx')) install.packages('openxlsx'); library('openxlsx')
+if (!require('RColorBrewer')) install.packages('RColorBrewer'); library('RColorBrewer')
 #Shiny related packages
-library(shiny)
-library(shinythemes)
-library(shinyWidgets)
-library(shinydashboard)
-library(colourpicker)
+if (!require('shiny')) install.packages('shiny'); library('shiny')
+if (!require('shinythemes')) install.packages('shinythemes'); library('shinythemes')
+if (!require('shinyWidgets')) install.packages('shinyWidgets'); library('shinyWidgets')
+if (!require('shinydashboard')) install.packages('shinydashboard'); library('shinydashboard')
+if (!require('colourpicker')) install.packages('colourpicker'); library('colourpicker')
 #datatable related packages
-library(gt)
-library(gtsummary)
-library(DT)
+if (!require('gt')) install.packages('gt'); library('gt')
+if (!require('gtsummary')) install.packages('gtsummary'); library('gtsummary')
+if (!require('DT')) install.packages('DT'); library('DT')
 
 #preloading 'iris' example dataset ----
 data(iris)
@@ -361,7 +361,7 @@ server <- function(input, output, session) {
     tbl_aov()
   })
   
-  #Download Statistic Table Functionality
+  #Download Statistic Table Functionality !!!WIP!!!
   output$plot_download <- downloadHandler(
     filename = function() { paste0(input$stattype, "png", sep=" ") },
     content = function(file) {
@@ -369,23 +369,6 @@ server <- function(input, output, session) {
     }
   )
 
-  ##verify if phantomJS is installed
-  phantomjs_path <- webshot:::find_phantom()
-  if (is.null(phantomjs_path)){
-    webshot::install_phantomjs()
-    FlgJS <- F
-  } else{
-    FlgJS <- T
-  }
-  phantomjs_path2 <- webshot:::find_phantom()
-  (FlgJS2 <- !(is.null(phantomjs_path2)))
-
-  EtatInstallationJS <- ifelse(isTRUE(FlgJS),
-                               "1-PhJS already installed",
-                               ifelse(isTRUE(FlgJS2),
-                                      "2-PhJS is being installed...",
-                                      "3-PhJS has not been installed"))
-  
   #Plot Tab ----
   #Plot Tab Dropdown Menu, choosing x, y and group variables, depending on plot type
   
