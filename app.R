@@ -1,6 +1,6 @@
 #Loading Libraries ----
 #General functions such as reading tables and tidy data
-if (!require('tidyverse2')) install.packages('tidyverse'); library('tidyverse')
+if (!require('tidyverse')) install.packages('tidyverse'); library('tidyverse')
 if (!require('readxl')) install.packages('readxl'); library('readxl')
 if (!require('openxlsx')) install.packages('openxlsx'); library('openxlsx')
 if (!require('RColorBrewer')) install.packages('RColorBrewer'); library('RColorBrewer')
@@ -14,6 +14,8 @@ if (!require('colourpicker')) install.packages('colourpicker'); library('colourp
 if (!require('gt')) install.packages('gt'); library('gt')
 if (!require('gtsummary')) install.packages('gtsummary'); library('gtsummary')
 if (!require('DT')) install.packages('DT'); library('DT')
+#machine learning functions
+if (!require('caret')) install.packages('caret');library('caret')
 
 #preloading 'iris' example dataset ----
 data(iris)
@@ -59,7 +61,7 @@ ui <- fluidPage(
                        img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png",
                            height = "30px"),
                        "by",
-                       img(src = "https://www.rstudio.com/wp-content/uploads/2014/07/RStudio-Logo-Blue-Gray.png",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
                            height = "30px"),
                        ".")),
                   
@@ -67,15 +69,16 @@ ui <- fluidPage(
                   conditionalPanel(
                     condition = "input.tabselected==2",
                     
-                    #Input: Choose Statistic
+                    #Input: Choose Statistic 
                     selectInput("stattype", "Select a Statistics:",
                                 choices = c("Descriptive" = "stats_desc",
-                                            "ANOVA" = "stats_aov",
-                                            "MANOVA" = "stats_man",
-                                            "Correlation Analysis" = "stats_corr",
-                                            "Regression Analysis" = "stats_reg"), 
+                                            "ANOVA" = "stats_aov"#,
+                                            #"MANOVA" = "stats_man", #currently WIP
+                                            #"Correlation Analysis" = "stats_corr", #currently WIP
+                                            #"Regression Analysis" = "stats_reg"), #currently WIP
+                                ),
                                 selected = "stats_desc"),
-                    downloadButton("stat_download", "Download Table"),
+                    #downloadButton("stat_download", "Download Table"), #currently WIP
                     hr(),
                     # add Shiny and RStudio logos
                     br(), br(),
@@ -83,7 +86,7 @@ ui <- fluidPage(
                        img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png",
                            height = "30px"),
                        "by",
-                       img(src = "https://www.rstudio.com/wp-content/uploads/2014/07/RStudio-Logo-Blue-Gray.png",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
                            height = "30px"),
                        ".")
                   ),
@@ -99,8 +102,7 @@ ui <- fluidPage(
                                             "Box Plot" = "plot_box",
                                             "Filled Bar Plot" = "plot_fillbar",
                                             "non Metric Scaling Plot" = "plot_nmds",
-                                            "Principal Component Analysis" = "plot_pca",
-                                            "Partial Least Squares Regression" = "plot_pls"
+                                            "Principal Component Analysis" = "plot_pca"
                                             ), 
                                 selected = "plot_scatter"),
                     downloadButton("plot_download", "Download Plot"),
@@ -111,14 +113,36 @@ ui <- fluidPage(
                        img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png",
                            height = "30px"),
                        "by",
-                       img(src = "https://www.rstudio.com/wp-content/uploads/2014/07/RStudio-Logo-Blue-Gray.png",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
+                           height = "30px"),
+                       ".")
+                  ),
+                  
+                  #Panel: Modelling and Machine Learning----
+                  conditionalPanel(
+                    condition = "input.tabselected==4",
+                    #Input: Choose Statistic 
+                    selectInput("modeltype", "Select a Model:",
+                                choices = c("Linear Regression" = "ml_linreg"#,
+                                            #"Polynomial Regression" = "ml_polreg", #currently WIP
+                                           #"Partial Least Squares Regression" = "ml_pls" #currently WIP
+                                ),
+                                selected = "ml_linreg"),
+                    hr(),
+                    # add Shiny and RStudio logos
+                    br(), br(),
+                    h5("Built with",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png",
+                           height = "30px"),
+                       "by",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
                            height = "30px"),
                        ".")
                   ),
                   
                   #Panel: Utility Functions----
                   conditionalPanel(
-                    condition = "input.tabselected==4",
+                    condition = "input.tabselected==5",
                     
                     #Input: Choose Variables
                     h4("Data Table Transformations"),
@@ -133,7 +157,7 @@ ui <- fluidPage(
                        img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png",
                            height = "30px"),
                        "by",
-                       img(src = "https://www.rstudio.com/wp-content/uploads/2014/07/RStudio-Logo-Blue-Gray.png",
+                       img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
                            height = "30px"),
                        ".")
                   )
@@ -179,12 +203,25 @@ ui <- fluidPage(
                                       uiOutput("choose_cols_pick_x"),
                                       uiOutput("choose_cols_pick_y")),
                             wellPanel(" ",
-                                      plotOutput(outputId = "barPlot", click = "plot_click")),
+                                      plotOutput(outputId = "main_plot", click = "plot_click")),
                             wellPanel(h4("Currently clicked data point:", align = "center"),
                                       tableOutput("click_data"))),
                    
+                   #Tab: Modelling and Machine Learning----
+                   tabPanel("Modellation", value = 4,
+                            wellPanel(h4("Data Modellation", algin = "center"),
+                                      br(),
+                                      uiOutput("ML_test_train_split"),
+                                      uiOutput("ML_choose_Y_data"),
+                                      uiOutput("ML_choose_X_data"),
+                                      hr()),
+                            wellPanel(" ",
+                                      plotOutput(outputId = "ML_plot"),
+                                      verbatimTextOutput(outputId = "ML_model"))),
+                   
+                   
                    #Tab: Utility Functions----
-                   tabPanel("Utility", value = 4,
+                   tabPanel("Utility", value = 5,
                             conditionalPanel(condition = "input.utility_funs=='wide_to_long'",
                             wellPanel(h4("Data Transformation Tool"),
                                       uiOutput("tbl_to_long_transformer"),
@@ -199,9 +236,9 @@ ui <- fluidPage(
                             wellPanel(dataTableOutput("response_to_biomass"))),
                    
                    #Tab: Debugging----
-                   tabPanel("Debug", value = 5,
-                            wellPanel(h4("Debugger"),
-                                      tableOutput("debugger")))
+                   # tabPanel("Debug", value = 6,
+                   #          wellPanel(h4("Debugger"),
+                   #                    tableOutput("debugger")))
                             
                   
       )
@@ -279,21 +316,14 @@ server <- function(input, output, session) {
           input$stattype == "stats_aov" |
           input$stattype == "stats_man" |
           input$stattype == "stats_reg")
-    varSelectInput("statvar_factor", "Choose grouping factor", df()%>% dplyr::select(where(negate(is.numeric))))
+    varSelectInput("statvar_factor", label = h6("Choose grouping factor"), df()%>% dplyr::select(where(negate(is.numeric))))
   })
-  
-  # #Stats Tab DropDown Menu: Choose test variable from data set
-  # output$choose_col_testvar <- renderUI({
-  #   req(input$stattype == "stats_aov" |
-  #         input$stattype == "stats_reg")
-  #   varSelectInput("statvar_test", "Choose test variable", df() %>% dplyr::select(where(is.numeric)))
-  # })
-  
+
   #Stats Tab DropDown Menu: Pick the "X" predictor variables for MANOVA
   output$choose_mult_testvars <- renderUI({
     req(input$stattype == "stats_aov" | 
         input$stattype == "stats_man")
-    pickerInput("statpick_x", label = "Select Columns with test variables", 
+    pickerInput("statpick_x", label = h6("Select Columns with test variables"), 
                 choices = names(df() %>% dplyr::select(where(is.numeric))),
                 options = list(
                   title = "Select a column...",
@@ -375,7 +405,7 @@ server <- function(input, output, session) {
   #Column for X variable
   output$choose_cols_x <- renderUI({
     req(input$plottype == "plot_scatter")
-    varSelectInput("plotvariable_x", "Choose X axis variable", df() %>% dplyr::select(where(is.numeric)))
+    varSelectInput("plotvariable_x", label = h6("Choose X axis variable"), df() %>% dplyr::select(where(is.numeric)))
   })
   
   #Column for Y variable
@@ -383,7 +413,7 @@ server <- function(input, output, session) {
     req(input$plottype == "plot_scatter" |
         input$plottype == "plot_bar" |
         input$plottype == "plot_box")
-    varSelectInput("plotvariable_y", "Choose Y axis variable", df() %>% dplyr::select(where(is.numeric)))
+    varSelectInput("plotvariable_y", label = h6("Choose Y axis variable"), df() %>% dplyr::select(where(is.numeric)))
   })
   
   #Column for group factor  
@@ -394,22 +424,14 @@ server <- function(input, output, session) {
         input$plottype == "plot_fillbar" |
         input$plottype == "plot_nmds" |
         input$plottype == "plot_pca")
-    varSelectInput("plotvariable_g", "Choose group variable", df() %>% dplyr::select(where(negate(is.numeric))))
+    varSelectInput("plotvariable_g", label = h6("Choose group variable"), df() %>% dplyr::select(where(negate(is.numeric))))
   })
   
-
-  #Slider choosing "Y" environmental variables DEPRECATED
-  # output$choose_cols_slider_y <- renderUI({
-  #   req(input$plottype == "plot_pca")
-  #   sliderInput("plotslider_y", label = h5("Select Columns with environmental variables"), min = 1, 
-  #               max = length(df()), value = c(1, 5), step = 1)
-  # })
-
   #Pick the "X" predictor variables for PCA et al.
   output$choose_cols_pick_x <- renderUI({
     req(input$plottype == "plot_nmds" |
         input$plottype == "plot_pca")
-    pickerInput("plotpick_x", label = "Select Columns with response variables", 
+    pickerInput("plotpick_x", label = h6("Select Columns with response variables"), 
       choices = names(df()%>% dplyr::select(where(is.numeric))),
       options = list(
         title = "Select a column...",
@@ -425,7 +447,7 @@ server <- function(input, output, session) {
   #Pick the "Y" environmental variables for PCA et al.
   output$choose_cols_pick_y <- renderUI({
     req(input$plottype == "plot_pca")
-    pickerInput("plotpick_y", label = "Select Columns with environmental variables", 
+    pickerInput("plotpick_y", label = h6("Select Columns with environmental variables"), 
                 choices = names(df()%>% dplyr::select(where(is.numeric))),
                 options = list(
                   title = "Select a column...",
@@ -611,7 +633,7 @@ server <- function(input, output, session) {
     })
   
   #Render the Plot
-  output$barPlot <- renderPlot({
+  output$main_plot <- renderPlot({
    shinyplot()
   })
     
@@ -632,6 +654,94 @@ server <- function(input, output, session) {
       ggsave(file, plot = shinyplot(), device = device)
     }
   )
+  #Modellation Tab ----
+  
+  #Modellation Tab UI: Slider that determines train/test split
+  output$ML_test_train_split <- renderUI({
+    req(input$modeltype == "ml_linreg" | 
+          input$modeltype == "ml_polreg")
+    sliderInput("test_train_split_slider", label = h6("What percentage to use as test data?"), min = 0, 
+                max = 100, value = 25)
+  })
+  
+  #Modellation Tab DropDown Menu: Choose Y data from data set
+  output$ML_choose_Y_data <- renderUI({
+    req(input$modeltype == "ml_linreg" | 
+          input$modeltype == "ml_polreg")
+    varSelectInput("mlvar_y", label = h6("Choose output variable to predict ('y' data)"), df())
+  })
+  
+  #Modellation Tab DropDown Menu: Pick the "X" predictor variables from data set
+  output$ML_choose_X_data <- renderUI({
+    req(input$modeltype == "ml_linreg" | 
+          input$modeltype == "ml_polreg")
+    varSelectInput("mlvar_X", label = h6("Select Column with predictor variable ('X' data)"), df())
+  }) 
+  
+  # output$ML_choose_X_data <- renderUI({
+  #   req(input$modeltype == "ml_linreg" | 
+  #         input$modeltype == "ml_polreg")
+  #   pickerInput("mlvar_X", label = "Select Columns with predictor variables ('X' data)", 
+  #               choices = names(df()),
+  #               options = list(
+  #                 title = "Select a column...",
+  #                 size = 5,
+  #                 `selected-text-format` = "count > 1",
+  #                 `actions-box` = TRUE), 
+  #               multiple = TRUE
+  #   )
+  # })
+  
+  #Create and Output a simple linear regression model
+  shiny_model <- reactive({
+    data <- df()
+    prop <- input$test_train_split_slider / 100
+    dep_var <-  df() %>% pull(input$mlvar_y)
+    pred_var <- df() %>% pull(input$mlvar_X)
+    train.index <- createDataPartition(df() %>% pull(input$mlvar_y), list = FALSE, p = 1 - prop)
+    train <- data[train.index, ]
+    test <- data[-train.index, ]
+    model <- lm(dep_var ~ pred_var, data = train)
+    names(model$coefficients) <- c("Intercept",input$mlvar_X)
+    list <- list("Train_Data" = train, "Test_Data" = test, "Model" = model)
+    train
+  })
+
+  #Generating the model plot, utilising the chosen variables
+  shiny_model_plot <- reactive({
+    
+    #Scatterplot with added linear regression line
+    ggplot(shiny_model()) +
+      scale_colour_manual(values = cb_palette) +
+      scale_fill_manual(values = cb_palette) +
+      theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
+            axis.title.x = element_text(face= "bold", size = 15),
+            axis.title.y = element_text(face = "bold", size = 15),
+            axis.text = element_text(face = "bold", size = 12),
+            legend.title = element_text(face = "bold", size = 15),
+            legend.text = element_text(size = 12),
+            panel.grid = element_blank(),
+            panel.background = element_rect(fill = "white",colour = "black")) +
+      geom_point(aes(x = !!input$mlvar_X,
+                              y = !!input$mlvar_y), 
+                          size = 2.5,
+                 color = "#1F77B4")  +
+      geom_smooth(aes(x = !!input$mlvar_X,
+                      y = !!input$mlvar_y), method = "lm", 
+                  se = FALSE, 
+                  color = "#D62728", 
+                  formula = y ~ x)
+  })
+  
+  #Render the Model Plot
+  output$ML_plot <- renderPlot({
+    shiny_model_plot()
+  })
+  
+  output$ML_model <- renderPrint({
+    summary(shiny_model()[3])
+  })
+  #
 
   #Utilities Tab----
 
@@ -843,9 +953,9 @@ server <- function(input, output, session) {
   
   #Debug Tab----
   #Debugging Function
-  output$debugger <- renderTable({
-    df()[,toString(input$plotvariable_g)] %>% unique %>% length
-  })
+  # output$debugger <- renderTable({
+  #   shiny_model()[1] %>% class
+  # })
 
 }
 
