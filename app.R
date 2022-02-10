@@ -101,6 +101,7 @@ ui <- fluidPage(
                                             "Bar Plot" = "plot_bar",
                                             "Box Plot" = "plot_box",
                                             "Filled Bar Plot" = "plot_fillbar",
+                                            "Histogramm" = "plot_hist",
                                             "non Metric Scaling Plot" = "plot_nmds",
                                             "Principal Component Analysis" = "plot_pca"
                                             ), 
@@ -208,8 +209,8 @@ ui <- fluidPage(
                                       tableOutput("click_data"))),
                    
                    #Tab: Modelling and Machine Learning----
-                   tabPanel("Modellation", value = 4,
-                            wellPanel(h4("Data Modellation", algin = "center"),
+                   tabPanel("Modelling", value = 4,
+                            wellPanel(h4("Data Modelling", algin = "center"),
                                       br(),
                                       uiOutput("ML_test_train_split"),
                                       uiOutput("ML_choose_Y_data"),
@@ -404,7 +405,8 @@ server <- function(input, output, session) {
   
   #Column for X variable
   output$choose_cols_x <- renderUI({
-    req(input$plottype == "plot_scatter")
+    req(input$plottype == "plot_hist" | 
+          input$plottype == "plot_scatter")
     varSelectInput("plotvariable_x", label = h6("Choose X axis variable"), df() %>% dplyr::select(where(is.numeric)))
   })
   
@@ -477,11 +479,14 @@ server <- function(input, output, session) {
               panel.background = element_rect(fill = "white",colour = "black"))
       
       #Scatterplot, Barplot and Box plot utilise a simple switch form
-      if(input$plottype == "plot_scatter" | 
+      if(input$plottype == "plot_hist" | 
+         input$plottype == "plot_scatter" | 
          input$plottype == "plot_bar" | 
          input$plottype == "plot_box"){
         
         switch(input$plottype,
+               plot_hist = p + 
+                 geom_histogram(aes(x = !!input$plotvariable_x)),
                plot_scatter = p +
                  geom_point(aes(x = !!input$plotvariable_x,
                                 y = !!input$plotvariable_y,
@@ -654,9 +659,9 @@ server <- function(input, output, session) {
       ggsave(file, plot = shinyplot(), device = device)
     }
   )
-  #Modellation Tab ----
+  #Modelling Tab ----
   
-  #Modellation Tab UI: Slider that determines train/test split
+  #Modelling Tab UI: Slider that determines train/test split
   output$ML_test_train_split <- renderUI({
     req(input$modeltype == "ml_linreg" | 
           input$modeltype == "ml_polreg")
@@ -664,14 +669,14 @@ server <- function(input, output, session) {
                 max = 100, value = 25)
   })
   
-  #Modellation Tab DropDown Menu: Choose Y data from data set
+  #Modelling Tab DropDown Menu: Choose Y data from data set
   output$ML_choose_Y_data <- renderUI({
     req(input$modeltype == "ml_linreg" | 
           input$modeltype == "ml_polreg")
     varSelectInput("mlvar_y", label = h6("Choose output variable to predict ('y' data)"), df())
   })
   
-  #Modellation Tab DropDown Menu: Pick the "X" predictor variables from data set
+  #Modelling Tab DropDown Menu: Pick the "X" predictor variables from data set
   output$ML_choose_X_data <- renderUI({
     req(input$modeltype == "ml_linreg" | 
           input$modeltype == "ml_polreg")
