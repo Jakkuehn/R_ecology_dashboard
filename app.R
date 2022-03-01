@@ -1,21 +1,34 @@
 #Loading Libraries ----
-#General functions such as reading tables and tidy data
-if (!require('tidyverse')) install.packages('tidyverse'); library('tidyverse')
-if (!require('readxl')) install.packages('readxl'); library('readxl')
-if (!require('openxlsx')) install.packages('openxlsx'); library('openxlsx')
-if (!require('RColorBrewer')) install.packages('RColorBrewer'); library('RColorBrewer')
-#Shiny related packages
-if (!require('shiny')) install.packages('shiny'); library('shiny')
-if (!require('shinythemes')) install.packages('shinythemes'); library('shinythemes')
-if (!require('shinyWidgets')) install.packages('shinyWidgets'); library('shinyWidgets')
-if (!require('shinydashboard')) install.packages('shinydashboard'); library('shinydashboard')
-if (!require('colourpicker')) install.packages('colourpicker'); library('colourpicker')
-#datatable related packages
-if (!require('gt')) install.packages('gt'); library('gt')
-if (!require('gtsummary')) install.packages('gtsummary'); library('gtsummary')
-if (!require('DT')) install.packages('DT'); library('DT')
-#machine learning functions
-if (!require('caret')) install.packages('caret');library('caret')
+# List of packages required for app
+packages <- c(
+  #General functions such as reading tables and tidy data
+  "tidyverse",
+  "readxl",
+  "openxlsx",
+  "RColorBrewer",
+  #Shiny related packages
+  "shiny",
+  "shinythemes",
+  "shinyWidgets",
+  "shinydashboard",
+  "colourpicker",
+  #datatable related packages
+  "gt",
+  "gtsummary",
+  "DT",
+  #machine learning functions
+  "caret")
+
+#Function to load or install&load all
+package_check <- lapply(
+  packages,
+  function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
 
 #preloading 'iris' example dataset ----
 data(iris)
