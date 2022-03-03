@@ -57,7 +57,8 @@ ui <- fluidPage(
                                          "text/comma-values,text/plain",
                                          ".csv",
                                          ".xls",
-                                         ".xlsx")),
+                                         ".xlsx")
+                              ),
                     #Load 'iris' example data if no own data is present
                     h4("Have no data?"),
                     actionButton("iris_data","Load Example"),
@@ -76,7 +77,8 @@ ui <- fluidPage(
                        "by",
                        img(src = "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png",
                            height = "30px"),
-                       ".")),
+                       ".")
+                    ),
                   
                   #Panel: Statistical Analysis----
                   conditionalPanel(
@@ -120,6 +122,13 @@ ui <- fluidPage(
                                             ), 
                                 selected = "plot_scatter"),
                     downloadButton("plot_download", "Download Plot"),
+                    checkboxInput('plot_options', 'Advanced Options', FALSE),
+                    conditionalPanel(condition = "input.plot_options",
+                                     numericInput("download_width", "Set Plot Width (in px): ", value = 1024),
+                                     numericInput("download_height", "Set Plot Height (in px): ", value = 768),
+                                     numericInput("download_dpi", "Set DPI (digital: 72, print: 300): ", value = 72)
+                                     ),
+                    
                     hr(),
                     # add Shiny and RStudio logos
                     br(), br(),
@@ -139,6 +148,7 @@ ui <- fluidPage(
                     selectInput("modeltype", "Select a Model:",
                                 choices = c("Linear Regression" = "ml_linreg"#,
                                             #"Polynomial Regression" = "ml_polreg", #currently WIP
+                                            #"Logistic Regression" = "ml_logreg", #Currently WIP
                                            #"Partial Least Squares Regression" = "ml_pls" #currently WIP
                                 ),
                                 selected = "ml_linreg"),
@@ -162,7 +172,8 @@ ui <- fluidPage(
                     h4("Data Table Transformations"),
                     selectInput("utility_funs","Select a Utility Function",
                                 choices = c("Wide-to-Long Transformation" = "wide_to_long",
-                                            "Response-to-Biomass Calculation" = "response_to_biomass")),
+                                            "Response-to-Biomass Calculation" = "response_to_biomass")
+                                ),
                     downloadButton("util_download", "Download Transformed Table"),
                     hr(), 
                     # add Shiny and RStudio logos
@@ -188,7 +199,9 @@ ui <- fluidPage(
                    tabPanel("Table", value = 1,
                             wellPanel(h4("This is your data", align = "center"),
                                       br(),
-                                      dataTableOutput("data_table"))),
+                                      dataTableOutput("data_table")
+                                      )
+                            ),
                    
                    #Tab: Statistical Analysis----
                    tabPanel("Statistics", value = 2,
@@ -198,14 +211,17 @@ ui <- fluidPage(
                                       br(),
                                       uiOutput("choose_col_groupfactor"),
                                       uiOutput("choose_col_testvar"),
-                                      uiOutput("choose_mult_testvars")),
+                                      uiOutput("choose_mult_testvars")
+                                      ),
                             
                             #Panel: Statistical Analysis as Table
                             wellPanel(h4("Data Exploration and Analysis", align = "center"),
                                       br(),
                                       tableOutput("data_summary"),
                                       tableOutput("data_aov"),
-                                      tableOutput("data_man"))),
+                                      tableOutput("data_man")
+                                      )
+                            ),
 
                    #Tab: Plot Output----
                    tabPanel("Plot", value = 3,
@@ -215,11 +231,21 @@ ui <- fluidPage(
                                       uiOutput("choose_cols_y"),
                                       uiOutput("choose_cols_g"),
                                       uiOutput("choose_cols_pick_x"),
-                                      uiOutput("choose_cols_pick_y")),
+                                      uiOutput("choose_cols_pick_y")
+                                      ),
                             wellPanel(" ",
-                                      plotOutput(outputId = "main_plot", click = "plot_click")),
-                            wellPanel(h4("Currently clicked data point:", align = "center"),
-                                      tableOutput("click_data"))),
+                                      plotOutput(outputId = "main_plot", 
+                                                 click = "plot_click", 
+                                                 width = "100%",
+                                                 height = "800px"
+                                                 )
+                                      ),
+                            conditionalPanel(condition = "input.plottype == 'plot_scatter'",
+                              wellPanel(h4("Currently clicked data point:", align = "center"),
+                                      tableOutput("click_data")
+                                      )
+                              )
+                            ),
                    
                    #Tab: Modelling and Machine Learning----
                    tabPanel("Modelling", value = 4,
@@ -228,26 +254,35 @@ ui <- fluidPage(
                                       uiOutput("ML_test_train_split"),
                                       uiOutput("ML_choose_Y_data"),
                                       uiOutput("ML_choose_X_data"),
-                                      hr()),
+                                      hr()
+                                      ),
                             wellPanel(" ",
                                       plotOutput(outputId = "ML_plot"),
-                                      verbatimTextOutput(outputId = "ML_model"))),
+                                      verbatimTextOutput(outputId = "ML_model")
+                                      )
+                            ),
                    
                    
                    #Tab: Utility Functions----
                    tabPanel("Utility", value = 5,
                             conditionalPanel(condition = "input.utility_funs=='wide_to_long'",
-                            wellPanel(h4("Data Transformation Tool"),
+                              wellPanel(h4("Data Transformation Tool"),
                                       uiOutput("tbl_to_long_transformer"),
                                       br(),
-                                      dataTableOutput("longformat_tbl"))),
+                                      dataTableOutput("longformat_tbl")
+                                      )
+                              ),
                             conditionalPanel(condition = "input.utility_funs=='response_to_biomass'",
-                            wellPanel(h4("Response-to-Biomass Calculator"),
+                              wellPanel(h4("Response-to-Biomass Calculator"),
                                       uiOutput("rsps_upload"),
                                       uiOutput("hlpr_upload"),
                                       br(),
-                                      uiOutput("rsps_to_biomass_button"))),
-                            wellPanel(dataTableOutput("response_to_biomass"))),
+                                      uiOutput("rsps_to_biomass_button")
+                                      )
+                              ),
+                            wellPanel(dataTableOutput("response_to_biomass")
+                                      )
+                            ),
                    
                    #Tab: Debugging----
                    # tabPanel("Debug", value = 6,
@@ -534,10 +569,6 @@ server <- function(input, output, session) {
           geom_bar(position = "fill", stat = "identity") +
           coord_flip() +
           scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Set3"))(length(unique(df_cast$Variable)))) +
-          labs(title = "Fatty Acid Profile",
-               x = "Collembola",
-               y = "Proportion",
-               fill = "Fatty Acid") +
           theme(plot.title = element_text(face ="bold", size = 15, hjust = 0.5),
                 axis.title.x = element_text(face="bold", size = 15),
                 axis.title.y = element_text(face ="bold", size = 15),
@@ -665,11 +696,12 @@ server <- function(input, output, session) {
   output$plot_download <- downloadHandler(
     filename = function() { paste0(input$plottype, ".png", sep=" ") },
     content = function(file) {
-      device <- function(..., width, height) {
-        grDevices::png(..., width = width, height = height,
-                       res = 300, units = "in")
-      }
-      ggsave(file, plot = shinyplot(), device = device)
+      # device <- function(..., width, height) {
+      #   grDevices::png(..., width = width, height = height,
+      #                  res = 300, units = "in")
+      # }
+      #ggsave(file, plot = shinyplot(), device = device)
+      ggsave(file, plot = shinyplot(), device = "png", width = input$download_width, height = input$download_height, dpi = input$download_dpi, units = "px")
     }
   )
   #Modelling Tab ----
@@ -722,14 +754,16 @@ server <- function(input, output, session) {
     model <- lm(dep_var ~ pred_var, data = train)
     names(model$coefficients) <- c("Intercept",input$mlvar_X)
     list <- list("Train_Data" = train, "Test_Data" = test, "Model" = model)
-    train
+    list
   })
 
   #Generating the model plot, utilising the chosen variables
   shiny_model_plot <- reactive({
+    now_df <- shiny_model()[1] %>% as.data.frame
+    names(now_df) <- names(df())
     
     #Scatterplot with added linear regression line
-    ggplot(shiny_model()) +
+    ggplot(now_df) +
       scale_colour_manual(values = cb_palette) +
       scale_fill_manual(values = cb_palette) +
       theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
@@ -741,11 +775,12 @@ server <- function(input, output, session) {
             panel.grid = element_blank(),
             panel.background = element_rect(fill = "white",colour = "black")) +
       geom_point(aes(x = !!input$mlvar_X,
-                              y = !!input$mlvar_y), 
+                     y = !!input$mlvar_y),
                           size = 2.5,
                  color = "#1F77B4")  +
       geom_smooth(aes(x = !!input$mlvar_X,
-                      y = !!input$mlvar_y), method = "lm", 
+                      y = !!input$mlvar_y),
+                      method = "lm", 
                   se = FALSE, 
                   color = "#D62728", 
                   formula = y ~ x)
@@ -756,8 +791,9 @@ server <- function(input, output, session) {
     shiny_model_plot()
   })
   
+  #Render a summary of the model (WIP)
   output$ML_model <- renderPrint({
-    summary(shiny_model()[3])
+   shiny_model()[3]
   })
   #
 
@@ -972,10 +1008,11 @@ server <- function(input, output, session) {
   #Debug Tab----
   #Debugging Function
   # output$debugger <- renderTable({
-  #   shiny_model()[1] %>% class
+  #   shiny_model()[1] %>% as.data.frame
   # })
 
 }
 
 #Call the App----
-shinyApp(ui = ui, server = server)
+#shinyApp(ui = ui, server = server)
+runGadget(ui, server, viewer = browserViewer(browser = getOption("browser"))) #Run in Browser
