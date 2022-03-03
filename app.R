@@ -36,7 +36,7 @@ data(iris)
 # Define UI ----
 ui <- fluidPage(
   
-  theme = shinytheme("paper"),
+#  theme = shinytheme("paper"),
 
   #AppTitle
   titlePanel("Fatty Acid Ecology Portfolio"),
