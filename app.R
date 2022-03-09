@@ -39,7 +39,7 @@ ui <- fluidPage(
 #  theme = shinytheme("paper"),
 
   #AppTitle
-  titlePanel("Fatty Acid Ecology Portfolio"),
+  titlePanel("Fatty Acid Ecology Dashboard"),
   
   # Sidebar layout with input and output definitions ----
   sidebarLayout(position = "right",
@@ -146,9 +146,9 @@ ui <- fluidPage(
                     condition = "input.tabselected==4",
                     #Input: Choose Statistic 
                     selectInput("modeltype", "Select a Model:",
-                                choices = c("Linear Regression" = "ml_linreg"#,
-                                            #"Polynomial Regression" = "ml_polreg", #currently WIP
-                                            #"Logistic Regression" = "ml_logreg", #Currently WIP
+                                choices = c("Linear Regression" = "ml_linreg",
+                                            "Polynomial Regression" = "ml_polreg",
+                                            "Logistic Regression" = "ml_logreg"
                                            #"Partial Least Squares Regression" = "ml_pls" #currently WIP
                                 ),
                                 selected = "ml_linreg"),
@@ -254,11 +254,13 @@ ui <- fluidPage(
                                       uiOutput("ML_test_train_split"),
                                       uiOutput("ML_choose_Y_data"),
                                       uiOutput("ML_choose_X_data"),
+                                      uiOutput("ML_choose_pol_degree"),
                                       hr()
                                       ),
                             wellPanel(" ",
-                                      plotOutput(outputId = "ML_plot"),
-                                      verbatimTextOutput(outputId = "ML_model")
+                                      verbatimTextOutput(outputId = "ML_model"),
+                                      #tableOutput(outputID = "ML_summary"),
+                                      plotOutput(outputId = "ML_plot")
                                       )
                             ),
                    
@@ -288,7 +290,7 @@ ui <- fluidPage(
                    # tabPanel("Debug", value = 6,
                    #          wellPanel(h4("Debugger"),
                    #                    tableOutput("debugger")))
-                            
+
                   
       )
     )
@@ -650,11 +652,6 @@ server <- function(input, output, session) {
                          y = PC2,
                          colour = groupvar),
                      size = 4.5) +
-          # annotate("text",
-          #          x = pca_mean$PC1,
-          #          y = pca_mean$PC2,
-          #          label = pca_mean$group,
-          #          fontface = "bold" , size = 5) +
           labs(x = paste("Root 1 (", round(eig_var[1], digits = 2), "% explained variance)", sep = ""), 
                y = paste("Root 2 (", round(eig_var[2], digits = 2), "% explained variance)", sep = "")) +
           theme(plot.title = element_text(face ="bold", size = 15, hjust = 0.5),
@@ -696,12 +693,13 @@ server <- function(input, output, session) {
   output$plot_download <- downloadHandler(
     filename = function() { paste0(input$plottype, ".png", sep=" ") },
     content = function(file) {
-      # device <- function(..., width, height) {
-      #   grDevices::png(..., width = width, height = height,
-      #                  res = 300, units = "in")
-      # }
-      #ggsave(file, plot = shinyplot(), device = device)
-      ggsave(file, plot = shinyplot(), device = "png", width = input$download_width, height = input$download_height, dpi = input$download_dpi, units = "px")
+      ggsave(file, 
+             plot = shinyplot(), 
+             device = "png", 
+             width = input$download_width, 
+             height = input$download_height, 
+             dpi = input$download_dpi, 
+             units = "px")
     }
   )
   #Modelling Tab ----
@@ -709,7 +707,8 @@ server <- function(input, output, session) {
   #Modelling Tab UI: Slider that determines train/test split
   output$ML_test_train_split <- renderUI({
     req(input$modeltype == "ml_linreg" | 
-          input$modeltype == "ml_polreg")
+          input$modeltype == "ml_polreg" |
+          input$modeltype == "ml_logreg" )
     sliderInput("test_train_split_slider", label = h6("What percentage to use as test data?"), min = 0, 
                 max = 100, value = 25)
   })
@@ -717,53 +716,79 @@ server <- function(input, output, session) {
   #Modelling Tab DropDown Menu: Choose Y data from data set
   output$ML_choose_Y_data <- renderUI({
     req(input$modeltype == "ml_linreg" | 
-          input$modeltype == "ml_polreg")
+          input$modeltype == "ml_polreg" |
+          input$modeltype == "ml_logreg")
     varSelectInput("mlvar_y", label = h6("Choose output variable to predict ('y' data)"), df())
   })
   
   #Modelling Tab DropDown Menu: Pick the "X" predictor variables from data set
   output$ML_choose_X_data <- renderUI({
-    req(input$modeltype == "ml_linreg" | 
-          input$modeltype == "ml_polreg")
-    varSelectInput("mlvar_X", label = h6("Select Column with predictor variable ('X' data)"), df())
-  }) 
+    req(input$modeltype == "ml_linreg" |
+          input$modeltype == "ml_polreg" |
+          input$modeltype == "ml_logreg")
+    pickerInput("mlvar_X", label = h6("Select Columns with predictor variables ('X' data)"),
+                choices = names(df()),
+                options = list(
+                  title = "Select a column...",
+                  size = 5,
+                  `selected-text-format` = "count > 1",
+                  `actions-box` = TRUE),
+                multiple = TRUE
+    )
+  })
   
-  # output$ML_choose_X_data <- renderUI({
-  #   req(input$modeltype == "ml_linreg" | 
-  #         input$modeltype == "ml_polreg")
-  #   pickerInput("mlvar_X", label = "Select Columns with predictor variables ('X' data)", 
-  #               choices = names(df()),
-  #               options = list(
-  #                 title = "Select a column...",
-  #                 size = 5,
-  #                 `selected-text-format` = "count > 1",
-  #                 `actions-box` = TRUE), 
-  #               multiple = TRUE
-  #   )
-  # })
+  #Modelling Tab Menu: pick the degree of the polynomial for polynomial regression
+  output$ML_choose_pol_degree <- renderUI({
+    req(input$modeltype == "ml_polreg")
+    numericInput("ml_poldegree", label = h6("Select Degree of Polynomial"),
+                 value = 2,
+                 min = 1,
+                 max = 9,
+                 step = 1)
+  })
   
   #Create and Output a simple linear regression model
   shiny_model <- reactive({
     data <- df()
     prop <- input$test_train_split_slider / 100
     dep_var <-  df() %>% pull(input$mlvar_y)
-    pred_var <- df() %>% pull(input$mlvar_X)
+    pred_var <- df() %>% select(input$mlvar_X)
+
     train.index <- createDataPartition(df() %>% pull(input$mlvar_y), list = FALSE, p = 1 - prop)
     train <- data[train.index, ]
     test <- data[-train.index, ]
-    model <- lm(dep_var ~ pred_var, data = train)
+    
+    formula <- switch(input$modeltype,
+                      ml_linreg = paste(input$mlvar_y, "~", paste(input$mlvar_X, collapse = "+"), sep = " ") %>% as.formula,
+                      ml_polreg = paste(input$mlvar_y, "~", paste(paste("poly(",input$mlvar_X,",",input$ml_poldegree,")", collapse = " + "), collapse = "+"), sep = " ") %>% as.formula,
+                      ml_logreg = paste(input$mlvar_y, "~", paste(input$mlvar_X, collapse = "+"), sep = " ") %>% as.formula
+    )
+    
+    model <- switch(input$modeltype,
+           ml_linreg = lm(formula, data = train),
+           ml_polreg = glm(formula, data = train),
+           ml_logreg = glm(formula, data = train, family = 'binomial')
+           )
+    
     names(model$coefficients) <- c("Intercept",input$mlvar_X)
-    list <- list("Train_Data" = train, "Test_Data" = test, "Model" = model)
+    list <- list("Train_Data" = train, "Test_Data" = test, "Model" = model, "formula" = formula)
     list
   })
-
+  
+  #Generate Summary Data from uploaded data set
+  tbl_model <- reactive({
+    model <- shiny_model()[3]
+    model %>% tbl_regression(exponentiate = TRUE) %>% as_gt()
+  })
+  
   #Generating the model plot, utilising the chosen variables
   shiny_model_plot <- reactive({
     now_df <- shiny_model()[1] %>% as.data.frame
     names(now_df) <- names(df())
     
+    
     #Scatterplot with added linear regression line
-    ggplot(now_df) +
+    p <- ggplot(now_df) +
       scale_colour_manual(values = cb_palette) +
       scale_fill_manual(values = cb_palette) +
       theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
@@ -773,28 +798,70 @@ server <- function(input, output, session) {
             legend.title = element_text(face = "bold", size = 15),
             legend.text = element_text(size = 12),
             panel.grid = element_blank(),
-            panel.background = element_rect(fill = "white",colour = "black")) +
-      geom_point(aes(x = !!input$mlvar_X,
-                     y = !!input$mlvar_y),
-                          size = 2.5,
-                 color = "#1F77B4")  +
-      geom_smooth(aes(x = !!input$mlvar_X,
-                      y = !!input$mlvar_y),
-                      method = "lm", 
-                  se = FALSE, 
-                  color = "#D62728", 
-                  formula = y ~ x)
-  })
-  
-  #Render the Model Plot
-  output$ML_plot <- renderPlot({
-    shiny_model_plot()
+            panel.background = element_rect(fill = "white",colour = "black"))
+    
+    switch(input$modeltype,
+           ml_linreg = p + 
+             geom_point(aes(x = eval(as.name(input$mlvar_X)),
+                            y = !!input$mlvar_y),
+                        size = 2.5,
+                        color = "#1F77B4")  +
+             geom_smooth(aes(x = eval(as.name(input$mlvar_X)),
+                             y = !!input$mlvar_y),
+                         method = "lm", 
+                         se = FALSE, 
+                         color = "#D62728", 
+                         formula = y ~ x) +
+             labs(x = paste(input$mlvar_X), 
+                  y = paste(input$mlvar_y)),
+           ml_polreg = p + 
+             geom_point(aes(x = eval(as.name(input$mlvar_X)),
+                            y = !!input$mlvar_y),
+                        size = 2.5,
+                        color = "#1F77B4")  +
+             geom_smooth(aes(x = eval(as.name(input$mlvar_X)),
+                             y = !!input$mlvar_y),
+                         method = "glm", 
+                         se = FALSE, 
+                         color = "#D62728",
+                         formula = y ~ poly(x, input$ml_poldegree)) +
+             labs(x = paste(input$mlvar_X), 
+                  y = paste(input$mlvar_y)), 
+           ml_logreg = p + 
+             geom_point(aes(x = eval(as.name(input$mlvar_X)),
+                            y = !!input$mlvar_y),
+                        size = 2.5,
+                        color = "#1F77B4")  +
+             stat_smooth(aes(x = eval(as.name(input$mlvar_X)),
+                             y = !!input$mlvar_y),
+                         method = "glm", 
+                         se = FALSE, 
+                         color = "#D62728", 
+                         method.args = list(family = "binomial")) +
+             labs(x = paste(input$mlvar_X), 
+                  y = paste(input$mlvar_y))
+    )
+    
+      
   })
   
   #Render a summary of the model (WIP)
   output$ML_model <- renderPrint({
-   shiny_model()[3]
+    shiny_model()[3]
   })
+  
+  #Render the Table Output of summary data
+  output$ML_summary <- render_gt({
+    tbl_model()
+  })
+  
+    #Render a Scatter Plot of the model if the X variables are equal to 1
+  output$ML_plot <- renderPlot({
+    req(length(input$mlvar_X) == 1)
+    shiny_model_plot()
+
+  })
+
   #
 
   #Utilities Tab----
@@ -1007,8 +1074,8 @@ server <- function(input, output, session) {
   
   #Debug Tab----
   #Debugging Function
-  # output$debugger <- renderTable({
-  #   shiny_model()[1] %>% as.data.frame
+  # output$debugger <- renderUI({
+  #   tbl_model()
   # })
 
 }

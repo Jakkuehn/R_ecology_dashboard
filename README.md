@@ -6,4 +6,4 @@ Further, there are utility functions which turn "wide" data (multiple responses 
 
 This project is still WIP, and tailored to the requirements and wishes of the ecology group at the Humboldt-University to Berlin.
 
-Current Tasks include addition of histograms and train/test modeling, as well as basic SQL integration
+Current Tasks include expansion of plots/models and better method to generate tables and results pages.
